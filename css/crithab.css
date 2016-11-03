@@ -1,0 +1,96 @@
+.add-button {
+	background: url(../images/add.gif)!important;
+}
+
+.delete-button {
+	background: url(../images/delete.gif)!important;
+}
+
+.condition-row-disabled {
+	background: url(../images/unchecked.png)!important;
+}
+
+.condition-row-enabled {
+	background: url(../images/checked.png)!important;
+}
+
+.ol-popup {
+	position: absolute;
+	background-color: white;
+	-webkit-filter: drop-shadow(0 1px 4px rgba(0,0,0,0.2));
+	filter: drop-shadow(0 1px 4px rgba(0,0,0,0.2));
+	padding: 15px;
+	border-radius: 10px;
+	border: 1px solid #cccccc;
+	bottom: 12px;
+	left: -50px;
+	min-width: 280px;
+}
+.ol-popup:after, .ol-popup:before {
+	top: 100%;
+	border: solid transparent;
+	content: " ";
+	height: 0;
+	width: 0;
+	position: absolute;
+	pointer-events: none;
+}
+.ol-popup:after {
+	border-top-color: white;
+	border-width: 10px;
+	left: 48px;
+	margin-left: -10px;
+}
+.ol-popup:before {
+	border-top-color: #cccccc;
+	border-width: 11px;
+	left: 48px;
+	margin-left: -11px;
+}
+.ol-popup-closer {
+	text-decoration: none;
+	position: absolute;
+	top: 2px;
+	right: 8px;
+}
+.ol-popup-closer:after {
+	content: "✖";
+}
+
+.dragbox-control {
+	top: 65px;
+	left: .5em;
+}
+.ol-touch .dragbox-control {
+	top: 80px;
+}
+
+#dragbox {
+	text-decoration: none;
+	color: black;
+	font-size: 11pt;
+	font-weight: bold;
+	text-shadow: black 0.1em 0.1em 0.2em;
+}
+
+.zoom-to-box {
+	top: 90px;
+	left: .5em;
+}
+
+.ol-touch .zoom-to-box {
+	top: 90px;
+}
+
+body {
+  font: 12px sans-serif;
+  padding: 50px;
+}
+
+#form {
+    position: relative;
+    right: 10px;
+    top: 10px;
+    padding-bottom: 20px;
+}
+

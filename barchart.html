@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html>
+<head>
+<!-- code loosely inspired by this block https://gist.github.com/mstanaland/6100713 -->
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<style>
+
+	body {
+	  font: 12px sans-serif;
+	  padding: 50px;
+	}
+
+	#form {
+		  position: relative;
+		  right: 10px;
+		  top: 10px;
+		  padding-bottom: 20px;
+	}
+
+	.axis path,
+	.axis line {
+	  fill: none;
+	  stroke: #000;
+	  shape-rendering: crispEdges;
+	}
+
+	.bar {
+	  fill: steelblue;
+	}
+
+	.myTooltip {
+		position: absolute;
+		z-index: 10;
+	}
+
+	.myTooltip p {
+		font-family: 'Roboto', sans-serif;
+		background-color: rgba(255, 255, 255, .8);
+		padding: .5em 1em;
+		font-size: 12px;
+		line-height: 17px;
+		color: black;
+	}
+
+	.tooltipHeader {
+		font-weight: 700;
+		font-size: 12.5px;
+	}
+
+	svg rect:hover {
+		opacity: .3;
+	}
+
+	svg circle:hover {
+		opacity: .3;
+	}
+
+	.unfocused {
+		stroke-opacity: 25%;
+	}
+
+	.focused {
+		stroke-width: 2px;
+		stroke-opacity: 100%;
+	}
+
+	.x.axis path {
+	  display: none;
+	}
+
+</style>
+</head>
+<body>
+
+	<h2>Endangered/Threatened Species by State</h2>
+	<div id="form">
+		<p>
+			<!-- Create radio button to display count by species group for each state -->
+			<label><input type="radio" name="mode" value="bycount" checked>Raw Count</label>
+			<label>&nbsp&nbsp</label>
+			<label>
+				<!-- Create select list to display count by selected species group for each state -->
+				<select name="mode" value="bygroup" id="bygroup">
+					<option value="All">All</option>
+					<option value="Amphibians">Amphibians</option>
+					<option value="Arachnids">Arachnids</option>
+					<option value="Birds">Birds</option>
+					<option value="Clams">Clams</option>
+					<option value="Conifers and Cycads">Conifers and Cycads</option>
+					<option value="Corals">Corals</option>
+					<option value="Crustaceans">Crustaceans</option>
+					<option value="Ferns and Allies">Ferns and Allies</option>
+					<option value="Fishes">Fishes</option>
+					<option value="Flowering Plants">Flowering Plants</option>
+					<option value="Insects">Insects</option>
+					<option value="Lichens">Lichens</option>
+					<option value="Mammals">Mammals</option>
+					<option value="Reptiles">Reptiles</option>
+					<option value="Snails">Snails</option>			
+				</select>
+				Species Group
+			</label>
+		</p>
+		<p>
+			<!-- Create radio button to display percent by species group for each state -->
+			<label><input type="radio" name="mode" value="bypercent">Percent</label>
+		</p>
+		<p id="splice"></p>
+	</div>
+	
+	<div id="chart"></div>
+	
+	<div id="groupchart"></div>
+
+	<div id="statechart"></div>
+
+	<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.6/d3.min.js"></script>
+	<script src="https://code.jquery.com/jquery-3.1.1.min.js"></script>
+		
+	<script>
+
+		<!-- Show/hide charts based on user selections -->
+		$('#bygroup').change(function() {
+			if (document.getElementById("bygroup").value == 'All') {
+				$('#groupchart').hide();
+				$('#chart').show();
+			} else {
+				$('#chart').hide();
+				$('#groupchart').empty();
+				$('#groupchart').show();
+				group_chart(document.getElementById("bygroup").value);
+			}
+		});
+	
+		<!-- Function to load chart showing raw count for all species groups -->
+		function orig_chart() {
+			var margin = {top: 20, right: 150, bottom: 100, left: 55},
+				width = 1200 - margin.left - margin.right,
+				height = 600 - margin.top - margin.bottom;
+
+			var xScale = d3.scale.ordinal()
+				.rangeRoundBands([0, width], .3);
+
+			var yScale = d3.scale.linear()
+				.rangeRound([height, 0]);
+
+			var color = d3.scale.category20();
+
+			var xAxis = d3.svg.axis()
+				.scale(xScale)
+				.orient("bottom")
+				.innerTickSize([0]);
+
+			var yAxis = d3.svg.axis()
+				.scale(yScale)
+				.orient("left")
+				.tickFormat(d3.format(".2s")); // for the stacked totals version
+
+			var stack = d3.layout
+				.stack();
+
+			var svg = d3.select("#chart").append("svg")
+				.attr("width", width + margin.left + margin.right)
+				.attr("height", height + margin.top + margin.bottom)
+			    .append("g")
+				.attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+			d3.csv("data/species_group_by_state.csv", function(error, data) {
+
+			  if (error) {
+				console.log(error);
+			  }
+
+			  //data.sort(function(a,b) { return a.State - b.State;});
+			  // how would we sort by largest total bar?  what would we have to calculate?
+
+			  var ageRange = ["Amphibians","Arachnids","Birds","Clams","Conifers and Cycads",
+			  "Corals","Crustaceans","Ferns and Allies","Fishes","Flowering Plants","Insects",
+			  "Lichens","Mammals","Reptiles","Snails"];
+
+			  dataToStack = makeData(ageRange, data);
+			  var stacked = stack(dataToStack);
+
+			  xScale.domain(data.map(function(d) { return d.State; }));
+
+			  svg.append("g")
+				  .attr("class", "x axis")
+				  .attr("transform", "translate(0," + height + ")")
+				  .call(xAxis)
+				  .selectAll("text")
+					.attr("dy", ".5em")
+					.attr("transform", "rotate(-40)")
+					.style("text-anchor", "end");
+
+			  svg.append("g")
+				  .attr("class", "y axis")
+				  .call(yAxis)
+				.append("text")
+				  .attr("transform", "rotate(-90)")
+				  .attr("y", -margin.left)
+				  .attr("x", -(height-margin.bottom)/2)
+				  .attr("dy", ".71em")
+				  .style("text-anchor", "end")
+				  .text("Count");
+
+			  var cause = svg.selectAll(".cause")
+				  .data(stacked)
+				  .enter().append("g")
+				  .attr("class", "cause")
+				  .style("fill", function(d, i) { return color(i); });
+
+			  var rectangles = cause.selectAll("rect")
+				  .data(function(d) {
+					//console.log("array for a rectangle");
+					return d; })  // this just gets the array for bar segment.
+				  .enter().append("rect")
+					.attr("width", xScale.rangeBand());
+
+				// this just draws them in the default way, now they're appended.
+			  transitionCount();
+
+			  drawLegend();
+
+			  var myTooltip = d3.select("body")
+				.append("div")
+				.attr("class", "myTooltip");
+
+			  var percentClicked = false;
+
+			  d3.selectAll("input").on("change", handleFormClick);
+
+			  // All the functions for stuff above!
+
+			  function handleFormClick() {
+				if (this.value === "bypercent") {
+				  percentClicked = true;
+				  transitionPercent();
+				} else {
+				  percentClicked = false;
+				  transitionCount();
+				}
+			  }
+
+			  function makeData (age,data) {
+				return ageRange.map(function(age) {
+					return data.map(function(d) {
+					  return {x: d["State"], y: +d[age], ageRange: age};
+					})
+				  });
+			  }
+
+			  function transitionPercent() {
+				yAxis.tickFormat(d3.format("%"));
+				stack.offset("expand");  // use this to get it to be relative/normalized!
+				var stacked = stack(makeData(ageRange, data));
+				// call function to do the bars, which is same across both formats.
+				transitionRects(stacked);
+			  }
+
+			  function transitionCount() {
+				yAxis.tickFormat(d3.format(".2s")); // for the stacked totals version
+				stack.offset("zero");
+				var stacked = stack(makeData(ageRange, data));
+				transitionRects(stacked);
+				//console.log("stacked", stacked);
+ 			  }
+
+			  function transitionRects(stacked) {
+
+				// this domain is using the last of the stacked arrays, which is the last illness, and getting the max height.
+				yScale.domain([0, d3.max(stacked[stacked.length-1], function(d) { return d.y0 + d.y; })]);
+
+				// attach new fixed data
+				var cause = svg.selectAll(".cause")
+				  .data(stacked);
+
+				// same on the rects
+				cause.selectAll("rect")
+				  .data(function(d) {
+					//console.log("array for a rectangle");
+					return d;
+				  })  // this just gets the array for bar segment.
+
+				svg.selectAll("g.cause rect")
+				  .transition()
+				  .duration(250)
+				  .attr("x", function(d) {
+					return xScale(d.x); })
+				  .attr("y", function(d) {
+					return yScale(d.y0 + d.y); }) //
+				  .attr("height", function(d) {
+					return yScale(d.y0) - yScale(d.y0 + d.y); });  // height is base - tallness
+
+				svg.selectAll(".y.axis").transition().call(yAxis);
+			  }
+
+			  // Building a legend by hand, based on http://bl.ocks.org/mbostock/3886208
+			  function drawLegend() {
+
+				var legend = svg.selectAll(".legend")
+					.data(color.domain().slice()) // what do you think this does?
+				  .enter().append("g")
+					.attr("class", "legend")
+					.attr("transform", function(d, i) { return "translate(0," + i * 20 + ")"; });
+
+				legend.append("rect")
+					.attr("x", width)
+					.attr("width", 18)
+					.attr("height", 18)
+					.style("fill", color);
+
+				legend.append("text")
+					.attr("x", width + 24)
+					.attr("y", 9)
+					.attr("dy", ".35em")
+					.style("text-anchor", "start")
+					.text(function(d, i) { return ageRange[i]; });
+			  }
+
+			   rectangles
+					.on("mouseover", mouseoverFunc)
+					.on("mousemove", mousemoveFunc)
+					.on("mouseout", mouseoutFunc);
+
+
+				function mouseoverFunc(d) {
+				  //console.log("moused over", d.x);
+					if(percentClicked) {
+						myTooltip
+						.style("display", null)
+						.html("<p><span class='tooltipHeader'>" + d.x + "</span><br>"+ d.ageRange + ": " + d3.format("%")(d.y) + "</p>");
+					} else {
+									// console.log("method", d.ageRange, "percent", d.y);
+					myTooltip
+						.style("display", null)
+						.html("<p><span class='tooltipHeader'>" + d.x + "</span><br>"+ d.ageRange + ": " +d.y + "</p>");
+					}
+				}
+
+				function mousemoveFunc(d) {
+					myTooltip
+						.style("top", (d3.event.pageY - 5) + "px")
+						.style("left", (d3.event.pageX + 10) + "px");
+				}
+				
+				function mouseoutFunc(d) {
+					return myTooltip.style("display", "none"); // this sets it to invisible!
+				}
+			});	
+		}
+		
+		<!-- Function to load chart showing raw count for selected species groups -->
+		function group_chart(group) {
+			var margin = {top: 20, right: 150, bottom: 100, left: 55},
+				width = 1200 - margin.left - margin.right,
+				height = 600 - margin.top - margin.bottom;
+
+			var xScale = d3.scale.ordinal()
+				.rangeRoundBands([0, width], .3);
+
+			var yScale = d3.scale.linear()
+				.rangeRound([height, 0]);
+
+			var color = d3.scale.category20();
+
+			var xAxis = d3.svg.axis()
+				.scale(xScale)
+				.orient("bottom")
+				.innerTickSize([0]);
+
+			var yAxis = d3.svg.axis()
+				.scale(yScale)
+				.orient("left")
+				.tickFormat(d3.format(".2s")); // for the stacked totals version
+
+			var stack = d3.layout
+				.stack();
+
+			var svg = d3.select("#groupchart").append("svg")
+				.attr("width", width + margin.left + margin.right)
+				.attr("height", height + margin.top + margin.bottom)
+			  .append("g")
+				.attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+			d3.csv("data/species_group_by_state.csv", function(error, data) {
+
+			  if (error) {
+				console.log(error);
+			  }
+
+			  //data.sort(function(a,b) { return a.State - b.State;});
+			  // how would we sort by largest total bar?  what would we have to calculate?
+
+			  var ageRange = [group];
+
+			  dataToStack = makeData(ageRange, data);
+			  //console.log(dataToStack);
+			  var stacked = stack(dataToStack);
+			  //console.log(stacked);
+
+			  xScale.domain(data.map(function(d) { return d.State; }));
+
+			  svg.append("g")
+				  .attr("class", "x axis")
+				  .attr("transform", "translate(0," + height + ")")
+				  .call(xAxis)
+				  .selectAll("text")
+					.attr("dy", ".5em")
+					.attr("transform", "rotate(-40)")
+					.style("text-anchor", "end");
+
+			  svg.append("g")
+				  .attr("class", "y axis")
+				  .call(yAxis)
+				.append("text")
+				  .attr("transform", "rotate(-90)")
+				  .attr("y", -margin.left)
+				  .attr("x", -(height-margin.bottom)/2)
+				  .attr("dy", ".71em")
+				  .style("text-anchor", "end")
+				  .text("Count");
+
+			  var cause = svg.selectAll(".cause")
+				  .data(stacked)
+				.enter().append("g")
+				  .attr("class", "cause")
+				  .style("fill", function(d, i) { 
+					switch(group) {
+						case 'Amphibians': return '#1f77b4';
+						case 'Arachnids': return '#aec7e8';
+						case 'Birds': return '#ff7f0e';
+						case 'Clams': return '#ffbb78';
+						case 'Conifers and Cycads': return '#2ca02c';
+						case 'Corals': return '#98df8a';
+						case 'Crustaceans': return '#d62728';
+						case 'Ferns and Allies': return '#ff9896';
+						case 'Fishes': return '#9467bd';
+						case 'Flowering Plants': return '#c5b0d5';
+						case 'Insects': return '#8c564b';
+						case 'Lichens': return '#c49c94';
+						case 'Mammals': return '#e377c2';
+						case 'Reptiles': return '#f7b6d2';
+						case 'Snails': return '#7f7f7f';
+					}
+				  });
+
+			  var rectangles = cause.selectAll("rect")
+				  .data(function(d) {
+					//console.log("array for a rectangle");
+					return d; })  // this just gets the array for bar segment.
+				.enter().append("rect")
+					.attr("width", xScale.rangeBand());
+
+				// this just draws them in the default way, now they're appended.
+			  transitionCount();
+
+			  drawLegend();
+
+			  var myTooltip = d3.select("body")
+				.append("div")
+				.attr("class", "myTooltip");
+
+			var percentClicked = false;
+
+			  d3.selectAll("input").on("change", handleFormClick);
+			  //d3.selectAll("bygroup").on("change", handleGroupChange());
+			  document.getElementById("bygroup").onchange=function() {handleGroupChange()};
+
+			  // All the functions for stuff above!
+
+			  function handleFormClick() {
+				if (this.value === "bypercent") {
+				  percentClicked = true;
+				  transitionPercent();
+				} else {
+				  percentClicked = false;
+				  transitionCount();
+				}
+			  }
+
+
+			  function makeData (age,data) {
+				return ageRange.map(function(age) {
+					return data.map(function(d) {
+					  return {x: d["State"], y: +d[age], ageRange: age};
+					})
+				  });
+			  }
+
+			  function handleGroupChange() {
+				var selectedGroup = document.getElementById("bygroup").value;
+				
+			  }
+
+			  function transitionPercent() {
+
+				yAxis.tickFormat(d3.format("%"));
+				stack.offset("expand");  // use this to get it to be relative/normalized!
+				var stacked = stack(makeData(ageRange, data));
+				// call function to do the bars, which is same across both formats.
+				transitionRects(stacked);
+			  }
+
+			  function transitionCount() {
+
+				yAxis.tickFormat(d3.format(".2s")); // for the stacked totals version
+				stack.offset("zero");
+				var stacked = stack(makeData(ageRange, data));
+				transitionRects(stacked);
+				//console.log("stacked", stacked);
+				}
+
+			  function transitionRects(stacked) {
+
+				// this domain is using the last of the stacked arrays, which is the last illness, and getting the max height.
+				yScale.domain([0, d3.max(stacked[stacked.length-1], function(d) { return d.y0 + d.y; })]);
+
+				// attach new fixed data
+				var cause = svg.selectAll(".cause")
+				  .data(stacked);
+
+				// same on the rects
+				cause.selectAll("rect")
+				  .data(function(d) {
+					//console.log("array for a rectangle");
+					return d;
+				  })  // this just gets the array for bar segment.
+
+				svg.selectAll("g.cause rect")
+				  .transition()
+				  .duration(250)
+				  .attr("x", function(d) {
+					return xScale(d.x); })
+				  .attr("y", function(d) {
+					return yScale(d.y0 + d.y); }) //
+				  .attr("height", function(d) {
+					return yScale(d.y0) - yScale(d.y0 + d.y); });  // height is base - tallness
+
+				svg.selectAll(".y.axis").transition().call(yAxis);
+			  }
+
+			  // Building a legend by hand, based on http://bl.ocks.org/mbostock/3886208
+			  function drawLegend() {
+
+				var legend = svg.selectAll(".legend")
+					.data(color.domain().slice()) // what do you think this does?
+				  .enter().append("g")
+					.attr("class", "legend")
+					.attr("transform", function(d, i) { return "translate(0," + i * 20 + ")"; });
+
+				legend.append("rect")
+					.attr("x", width)
+					.attr("width", 18)
+					.attr("height", 18)
+					.style("fill", color);
+
+				legend.append("text")
+					.attr("x", width + 24)
+					.attr("y", 9)
+					.attr("dy", ".35em")
+					.style("text-anchor", "start")
+					.text(function(d, i) { return ageRange[i]; });
+			  }
+
+			   rectangles
+					.on("mouseover", mouseoverFunc)
+					.on("mousemove", mousemoveFunc)
+					.on("mouseout", mouseoutFunc);
+
+
+				function mouseoverFunc(d) {
+				  //console.log("moused over", d.x);
+					if(percentClicked) {
+						myTooltip
+						.style("display", null)
+						.html("<p><span class='tooltipHeader'>" + d.x + "</span><br>"+ d.ageRange + ": " + d3.format("%")(d.y) + "</p>");
+					} else {
+									// console.log("method", d.ageRange, "percent", d.y);
+					myTooltip
+						.style("display", null)
+						.html("<p><span class='tooltipHeader'>" + d.x + "</span><br>"+ d.ageRange + ": " +d.y + "</p>");
+					}
+				}
+
+				function mousemoveFunc(d) {
+					myTooltip
+						.style("top", (d3.event.pageY - 5) + "px")
+						.style("left", (d3.event.pageX + 10) + "px");
+				}
+				
+				function mouseoutFunc(d) {
+					return myTooltip.style("display", "none"); // this sets it to invisible!
+				}
+			});	
+		}
+
+		<!-- Initially load the original chart showing raw count for all species groups by state -->
+		orig_chart();
+
+	</script>
+</body>
+</html>
