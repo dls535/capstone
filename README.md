@@ -12,27 +12,22 @@ GeoExt.  The contents of these folders can be downloaded from https://github.com
 The remaining source is accessed via the following CDN links:
 
 OpenLayers 3
-
 https://cdnjs.cloudflare.com/ajax/libs/ol3/3.19.1/ol.css
 https://cdn.jsdelivr.net/openlayers.layerswitcher/1.1.0/ol3-layerswitcher.css
 https://cdnjs.cloudflare.com/ajax/libs/ol3/3.19.1/ol.js
 https://cdn.jsdelivr.net/openlayers.layerswitcher/1.1.0/ol3-layerswitcher.js
 
 ExtJS
-
 https://cdnjs.cloudflare.com/ajax/libs/extjs/6.2.0/ext-all.js
 
 D3
-
 https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.6/d3.min.js
 https://d3js.org/topojson.v1.min.js
 
 JQuery
-
 https://code.jquery.com/jquery-3.1.1.min.js
 
 Bootstrap
-
 https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css
 https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css
 
